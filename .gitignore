@@ -1,0 +1,79 @@
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment files
+config.env
+*.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+log/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+.#*
+\#*#
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Shell script temporary files
+*.pid
+*.sock
+
+# Test output
+test_output/
+test_results/
+
+# Database files (if any)
+*.db
+*.sqlite
+*.sqlite3
+
+# Archive files
+*.tar
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# Node modules (if any)
+node_modules/
+
+# Python (if any Python scripts are added)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
