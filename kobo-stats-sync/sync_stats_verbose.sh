@@ -1,10 +1,16 @@
 #!/bin/sh
-# sync_stats.sh - Sync Kobo reading stats to API
+# sync_stats.sh - Sync Kobo reading stats to API (VERBOSE VERSION)
 # Place in: /mnt/onboard/.adds/kobo-stats-sync/
 
 SCRIPT_DIR="$(dirname "$0")"
 CONFIG_FILE="$SCRIPT_DIR/config.env"
 DB_PATH="/mnt/onboard/.kobo/KoboReader.sqlite"
+LOG_FILE="/mnt/onboard/.adds/kobo-stats-sync/sync.log"
+
+# Function to log both to file and stdout
+log() {
+    echo "$1" | tee -a "$LOG_FILE"
+}
 
 # Helper function to show notification (if fbink available)
 notify() {
@@ -13,29 +19,40 @@ notify() {
     fi
 }
 
+# Start fresh log
+echo "===== Sync Started: $(date) =====" > "$LOG_FILE"
+
 # Load configuration
 if [ -f "$CONFIG_FILE" ]; then
     . "$CONFIG_FILE"
+    log "✓ Config loaded"
 else
-    echo "✗ Config file not found!"
-    echo ""
-    echo "Expected at:"
-    echo "$CONFIG_FILE"
-    echo ""
-    echo "Please copy config.env.example"
-    echo "to config.env and edit it."
+    log "✗ Config file not found: $CONFIG_FILE"
+    log "Please copy config.env.example to config.env"
     notify "Config missing!"
     exit 0
 fi
 
+log "API Endpoint: $API_ENDPOINT"
+log ""
+
 # Check if connected to WiFi
+log "Checking internet connection..."
 if ! ping -c 1 -W 2 8.8.8.8 > /dev/null 2>&1; then
-    echo "✗ No internet connection"
-    echo ""
-    echo "Please connect to WiFi first"
+    log "✗ No internet connection"
+    log "Please connect to WiFi first"
     notify "No WiFi!"
     exit 0
 fi
+log "✓ Internet connected"
+
+# Check database exists
+if [ ! -f "$DB_PATH" ]; then
+    log "✗ Database not found: $DB_PATH"
+    notify "DB not found!"
+    exit 0
+fi
+log "✓ Database found"
 
 # Extract reading stats from Kobo database
 get_reading_stats() {
@@ -45,9 +62,11 @@ get_reading_stats() {
     if [ -f "$SCRIPT_DIR/sqlite3" ]; then
         # Use bundled sqlite3 binary
         SQLITE_CMD="$SCRIPT_DIR/sqlite3"
+        log "Using bundled sqlite3: $SCRIPT_DIR/sqlite3"
     elif command -v sqlite3 > /dev/null 2>&1; then
         # Use system sqlite3
         SQLITE_CMD="sqlite3"
+        log "Using system sqlite3"
     fi
     
     # Try sqlite3 command first
@@ -75,19 +94,16 @@ ORDER BY DateLastRead DESC;
 EOF
     # Fallback to Python if sqlite3 not available
     elif command -v python3 > /dev/null 2>&1; then
+        log "Using python3 for database query"
         python3 "$SCRIPT_DIR/query_db.py"
     elif command -v python > /dev/null 2>&1; then
+        log "Using python for database query"
         python "$SCRIPT_DIR/query_db.py"
     else
-        echo "✗ Cannot query database!" >&2
-        echo "" >&2
-        echo "Missing required tools:" >&2
-        echo "  - sqlite3 (not found)" >&2
-        echo "  - python (not found)" >&2
-        echo "" >&2
-        echo "Solution:" >&2
-        echo "Run ./download_sqlite3.sh to get" >&2
-        echo "a compatible sqlite3 binary" >&2
+        log "✗ Cannot query database!"
+        log "Missing required tools: sqlite3, python"
+        log ""
+        log "Solution: Run ./download_sqlite3.sh"
         return 1
     fi
 }
@@ -140,69 +156,65 @@ send_to_api() {
         -d "$payload" \
         --connect-timeout 10 \
         --max-time 30 \
-        -v -w "\n%{http_code}" 2>&1
+        -v -w "\n%{http_code}" 2>&1 >> "$LOG_FILE"
 }
 
-# Main execution
-echo "Syncing reading stats..."
-echo ""
-
-# Check database exists
-if [ ! -f "$DB_PATH" ]; then
-    echo "✗ Database not found"
-    echo ""
-    echo "Expected at:"
-    echo "$DB_PATH"
-    notify "DB not found!"
-    exit 0
-fi
-
-# Get stats and build payload
+# Get stats
+log "Querying database..."
 STATS=$(get_reading_stats)
 if [ -z "$STATS" ]; then
-    echo "✗ No books found with reading progress"
-    echo ""
-    echo "Make sure you've read at least"
-    echo "a few pages of a book first!"
+    log "✗ No reading stats found"
+    log "  (No books with progress > 0%)"
+    log ""
+    log "Make sure you've read at least a few pages of a book!"
     notify "No books to sync!"
     exit 0
 fi
 
 BOOK_COUNT=$(echo "$STATS" | wc -l | tr -d ' ')
-echo "Found: $BOOK_COUNT books"
-echo ""
+log "✓ Found $BOOK_COUNT books with reading progress"
 
+# Build payload
+log "Building JSON payload..."
 PAYLOAD=$(echo "$STATS" | build_payload)
 
-# Save payload to temp file for debugging
-TEMP_PAYLOAD="/tmp/kobo-sync-payload.json"
-echo "$PAYLOAD" > "$TEMP_PAYLOAD"
+# Save payload for debugging
+PAYLOAD_FILE="/mnt/onboard/.adds/kobo-stats-sync/last_payload.json"
+echo "$PAYLOAD" > "$PAYLOAD_FILE"
+log "✓ Payload saved to: $PAYLOAD_FILE"
+
+# Show first 300 chars in log
+log ""
+log "Payload preview:"
+echo "$PAYLOAD" | head -c 300 >> "$LOG_FILE"
+log "..."
+log ""
 
 # Send to API
-echo "Sending to: $API_ENDPOINT"
-echo ""
+log "Sending to API..."
 RESPONSE=$(send_to_api "$PAYLOAD")
 HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
 
-# Save full response for debugging
-echo "$RESPONSE" > /tmp/kobo-sync-response.log
+log ""
+log "HTTP Response Code: $HTTP_CODE"
 
 if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
-    echo "✓ SUCCESS!"
-    echo ""
-    echo "Synced $BOOK_COUNT books"
-    echo "HTTP Status: $HTTP_CODE"
+    log "✓ Stats synced successfully!"
+    log ""
+    log "Synced $BOOK_COUNT books at $(date)"
     
-    # Show notification on Kobo
+    # Show success notification
     notify "✓ Synced $BOOK_COUNT books!"
 else
-    echo "✗ FAILED"
-    echo ""
-    echo "HTTP Status: $HTTP_CODE"
-    echo ""
-    echo "Debug files saved to /tmp/"
-    echo "- kobo-sync-payload.json"
-    echo "- kobo-sync-response.log"
+    log "✗ Sync failed (HTTP $HTTP_CODE)"
+    log ""
+    log "Check the log file for details:"
+    log "$LOG_FILE"
     
-    notify "✗ Sync failed! ($HTTP_CODE)"
+    # Show error notification  
+    notify "✗ Sync failed! Check logs"
 fi
+
+log ""
+log "===== Sync Completed: $(date) ====="
+

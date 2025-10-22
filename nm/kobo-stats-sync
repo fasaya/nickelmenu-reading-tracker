@@ -1,8 +1,13 @@
 # NickelMenu config file
 # Place in: /mnt/onboard/.adds/nm/kobo-stats-sync
 
-menu_item :main    :Sync Reading Stats    :cmd_spawn       :quiet:/mnt/onboard/.adds/kobo-stats-sync/sync_stats.sh
-menu_item :library :Sync Reading Stats    :cmd_spawn       :quiet:/mnt/onboard/.adds/kobo-stats-sync/sync_stats.sh
+# Main sync menu - shows output in a dialog
+menu_item :main    :Sync Reading Stats         :cmd_output :500:/mnt/onboard/.adds/kobo-stats-sync/sync_stats.sh
+menu_item :library :Sync Reading Stats         :cmd_output :500:/mnt/onboard/.adds/kobo-stats-sync/sync_stats.sh
+
+# Verbose version - logs everything to file
+menu_item :main    :Sync Stats (Verbose)       :cmd_output :500:/mnt/onboard/.adds/kobo-stats-sync/sync_stats_verbose.sh
+menu_item :library :Sync Stats (Verbose)       :cmd_output :500:/mnt/onboard/.adds/kobo-stats-sync/sync_stats_verbose.sh
 
 # Optional: Auto-sync on WiFi connect
 # chain_success :nickel_wifi_connected :cmd_spawn :quiet:/mnt/onboard/.adds/kobo-stats-sync/sync_stats.sh
