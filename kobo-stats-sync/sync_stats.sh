@@ -25,17 +25,23 @@ get_reading_stats() {
     sqlite3 "$DB_PATH" <<EOF
 SELECT 
     ContentID,
+    BookID,
+    BookTitle,
     Title,
     Attribution,
-    ___PercentRead,
+    DateLastRead,
+    TimeSpentReading,
+    LastTimeStartedReading,
+    LastTimeFinishedReading,
     ReadStatus,
-    ___UserID,
-    DateLastRead
+    ___PercentRead,
+    RestOfBookEstimate,
+    CurrentChapterEstimate,
+    CurrentChapterProgress
 FROM content
-WHERE ContentType = 6
+WHERE ContentType IN (6, 10, 16)
 AND ___PercentRead > 0
-ORDER BY DateLastRead DESC
-LIMIT 20;
+ORDER BY DateLastRead DESC;
 EOF
 }
 
@@ -47,7 +53,7 @@ build_payload() {
     echo "  \"books\": ["
     
     first=true
-    while IFS='|' read -r content_id title author percent status user_id last_read; do
+    while IFS='|' read -r content_id book_id book_title title author date_last_read time_spent last_started last_finished read_status percent_read rest_estimate chapter_estimate chapter_progress; do
         if [ "$first" = true ]; then
             first=false
         else
@@ -56,11 +62,19 @@ build_payload() {
         
         echo "    {"
         echo "      \"content_id\": \"$content_id\","
+        echo "      \"book_id\": \"$book_id\","
+        echo "      \"book_title\": \"$book_title\","
         echo "      \"title\": \"$title\","
         echo "      \"author\": \"$author\","
-        echo "      \"percent_complete\": $percent,"
-        echo "      \"status\": $status,"
-        echo "      \"last_read\": \"$last_read\""
+        echo "      \"date_last_read\": \"$date_last_read\","
+        echo "      \"time_spent_reading\": $time_spent,"
+        echo "      \"last_time_started_reading\": \"$last_started\","
+        echo "      \"last_time_finished_reading\": \"$last_finished\","
+        echo "      \"read_status\": $read_status,"
+        echo "      \"percent_read\": $percent_read,"
+        echo "      \"rest_of_book_estimate\": $rest_estimate,"
+        echo "      \"current_chapter_estimate\": $chapter_estimate,"
+        echo "      \"current_chapter_progress\": $chapter_progress"
         echo -n "    }"
     done
     
@@ -75,7 +89,7 @@ send_to_api() {
     
     curl -X POST "$API_ENDPOINT" \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $API_KEY" \
+        -H "X-API-Key: $API_KEY" \
         -d "$payload" \
         --connect-timeout 10 \
         --max-time 30 \
