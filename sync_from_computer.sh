@@ -49,25 +49,24 @@ echo "Querying database..."
 
 # Extract reading stats
 STATS=$(sqlite3 "$DB_PATH" <<EOF
+.mode tabs
 SELECT 
     ContentID,
-    BookID,
-    BookTitle,
-    Title,
-    Language,
-    Attribution,
-    DateLastRead,
-    FirstTimeReading,
-    TimeSpentReading,
-    LastTimeStartedReading,
-    LastTimeFinishedReading,
-    ReadStatus,
-    ___PercentRead,
-    RestOfBookEstimate,
-    CurrentChapterEstimate,
-    CurrentChapterProgress,
-    Description,
-    Publisher
+    COALESCE(Title, 'NULL') as Title,
+    COALESCE(Language, 'NULL') as Language,
+    COALESCE(Attribution, 'NULL') as Attribution,
+    COALESCE(DateLastRead, 'NULL') as DateLastRead,
+    COALESCE(FirstTimeReading, 0) as FirstTimeReading,
+    COALESCE(TimeSpentReading, 0) as TimeSpentReading,
+    COALESCE(LastTimeStartedReading, 'NULL') as LastTimeStartedReading,
+    COALESCE(LastTimeFinishedReading, 'NULL') as LastTimeFinishedReading,
+    COALESCE(ReadStatus, 0) as ReadStatus,
+    COALESCE(___PercentRead, 0) as PercentRead,
+    COALESCE(RestOfBookEstimate, 0) as RestOfBookEstimate,
+    COALESCE(CurrentChapterEstimate, 0) as CurrentChapterEstimate,
+    COALESCE(CurrentChapterProgress, 0) as CurrentChapterProgress,
+    COALESCE(replace(replace(replace(Description, char(10), ' '), char(13), ' '), char(9), ' '), 'NULL') as Description,
+    COALESCE(Publisher, 'NULL') as Publisher
 FROM content
 WHERE ContentType = 6
 ORDER BY DateLastRead DESC;
@@ -97,7 +96,33 @@ PAYLOAD="$PAYLOAD
   \"books\": ["
 
 first=true
-while IFS='|' read -r content_id book_id book_title title language author date_last_read time_spent last_started last_finished read_status percent_read rest_estimate chapter_estimate chapter_progress first_time_reading description publisher; do
+while IFS=$'\t' read -r content_id title language attribution date_last_read first_time_reading time_spent_reading last_time_started_reading last_time_finished_reading read_status percent_read rest_of_book_estimate current_chapter_estimate current_chapter_progress description publisher; do
+    [[ -z "$content_id" ]] && continue
+    
+    # Convert 'NULL' placeholder back to empty
+    [[ "$title" == "NULL" ]] && title=""
+    [[ "$language" == "NULL" ]] && language=""
+    [[ "$attribution" == "NULL" ]] && attribution=""
+    [[ "$date_last_read" == "NULL" ]] && date_last_read=""
+    [[ "$last_time_started_reading" == "NULL" ]] && last_time_started_reading=""
+    [[ "$last_time_finished_reading" == "NULL" ]] && last_time_finished_reading=""
+    [[ "$description" == "NULL" ]] && description=""
+    [[ "$publisher" == "NULL" ]] && publisher=""
+    
+    # ESCAPE DOUBLE QUOTES IN ALL STRING FIELDS
+    title="${title//\"/\\\"}"
+    language="${language//\"/\\\"}"
+    attribution="${attribution//\"/\\\"}"
+    date_last_read="${date_last_read//\"/\\\"}"
+    last_time_started_reading="${last_time_started_reading//\"/\\\"}"
+    last_time_finished_reading="${last_time_finished_reading//\"/\\\"}"
+    description="${description//\"/\\\"}"
+    publisher="${publisher//\"/\\\"}"
+    
+    # Also escape backslashes first to prevent double-escaping
+    description="${description//\\/\\\\}"
+    description="${description//\"/\\\"}"
+    
     if [ "$first" = true ]; then
         first=false
     else
@@ -109,35 +134,31 @@ while IFS='|' read -r content_id book_id book_title title language author date_l
     PAYLOAD="$PAYLOAD
       \"content_id\": \"$content_id\","
     PAYLOAD="$PAYLOAD
-      \"book_id\": \"$book_id\","
-    PAYLOAD="$PAYLOAD
-      \"book_title\": \"$book_title\","
-    PAYLOAD="$PAYLOAD
       \"title\": \"$title\","
     PAYLOAD="$PAYLOAD
       \"language\": \"$language\","
     PAYLOAD="$PAYLOAD
-      \"author\": \"$author\","
+      \"author\": \"$attribution\","
     PAYLOAD="$PAYLOAD
       \"date_last_read\": \"$date_last_read\","
     PAYLOAD="$PAYLOAD
-      \"time_spent_reading\": $time_spent,"
+      \"first_time_reading\": $first_time_reading,"
     PAYLOAD="$PAYLOAD
-      \"last_time_started_reading\": \"$last_started\","
+      \"time_spent_reading\": $time_spent_reading,"
     PAYLOAD="$PAYLOAD
-      \"last_time_finished_reading\": \"$last_finished\","
+      \"last_time_started_reading\": \"$last_time_started_reading\","
+    PAYLOAD="$PAYLOAD
+      \"last_time_finished_reading\": \"$last_time_finished_reading\","
     PAYLOAD="$PAYLOAD
       \"read_status\": $read_status,"
     PAYLOAD="$PAYLOAD
       \"percent_read\": $percent_read,"
     PAYLOAD="$PAYLOAD
-      \"rest_of_book_estimate\": $rest_estimate,"
+      \"rest_of_book_estimate\": $rest_of_book_estimate,"
     PAYLOAD="$PAYLOAD
-      \"current_chapter_estimate\": $chapter_estimate,"
+      \"current_chapter_estimate\": $current_chapter_estimate,"
     PAYLOAD="$PAYLOAD
-      \"current_chapter_progress\": $chapter_progress,"
-    PAYLOAD="$PAYLOAD
-      \"first_time_reading\": $first_time_reading,"
+      \"current_chapter_progress\": $current_chapter_progress,"
     PAYLOAD="$PAYLOAD
       \"description\": \"$description\","
     PAYLOAD="$PAYLOAD
@@ -160,6 +181,7 @@ echo ""
 echo "Sending to API..."
 RESPONSE=$(curl -X POST "$API_ENDPOINT" \
     -H "Content-Type: application/json" \
+    -H "Accept: application/json" \
     -H "X-API-Key: $API_KEY" \
     -d "$PAYLOAD" \
     --connect-timeout 10 \
