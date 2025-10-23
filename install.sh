@@ -31,11 +31,17 @@ echo "Copying scripts..."
 cp kobo-stats-sync/sync_stats.sh "$KOBO_DEST/"
 cp kobo-stats-sync/sync_stats_verbose.sh "$KOBO_DEST/"
 cp kobo-stats-sync/query_db.py "$KOBO_DEST/"
+cp kobo-stats-sync/find_tools.sh "$KOBO_DEST/"
 
 # Copy sqlite3 binary if it exists
-if [ -f kobo-stats-sync/sqlite3 ]; then
-    cp kobo-stats-sync/sqlite3 "$KOBO_DEST/"
-    echo "✓ sqlite3 binary included"
+if [ -f kobo-stats-sync/sqlite3 ] && [ -s kobo-stats-sync/sqlite3 ]; then
+    # Check if it's actually a binary (not HTML)
+    if file kobo-stats-sync/sqlite3 | grep -q "executable"; then
+        cp kobo-stats-sync/sqlite3 "$KOBO_DEST/"
+        echo "✓ sqlite3 binary included"
+    else
+        echo "⚠ sqlite3 file found but not a valid binary (skipped)"
+    fi
 fi
 
 # Check if config.env exists, if not copy example
@@ -55,6 +61,7 @@ cp nm/kobo-stats-sync "$NM_DEST/"
 chmod +x "$KOBO_DEST/sync_stats.sh"
 chmod +x "$KOBO_DEST/sync_stats_verbose.sh"
 chmod +x "$KOBO_DEST/query_db.py"
+chmod +x "$KOBO_DEST/find_tools.sh"
 
 # Make sqlite3 executable if it exists
 if [ -f "$KOBO_DEST/sqlite3" ]; then

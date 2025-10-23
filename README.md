@@ -1,21 +1,35 @@
-## Important: SQLite3 Requirement
+## ⚡ Quick Start (Working Now!)
 
-The scripts need to query the Kobo database. They will automatically try (in order):
-1. Bundled `sqlite3` binary (if you download it)
-2. System `sqlite3` command (if available on Kobo)
-3. `python3` with sqlite module
-4. `python` (Python 2) with sqlite module
-
-**If your Kobo has none of these**, you have two options:
-
-### Option A: Sync from Your Computer Instead
+**Your sync is working!** Use this command with Kobo connected via USB:
 ```bash
 ./sync_from_computer.sh
 ```
-This queries the database on your Mac and sends to API (requires Kobo connected via USB).
 
-### Option B: Download sqlite3 Binary for Kobo
-See [SQLITE3_SETUP.md](SQLITE3_SETUP.md) for detailed instructions.
+This queries your Kobo's database from your Mac and sends data to your API.
+
+**Tested on:** Kobo Clara Colour (firmware 4.43.23418) ✅
+
+## 🎯 For Automatic Sync Directly from Kobo
+
+The Kobo-side scripts need `sqlite3` to query the database. They will automatically try:
+1. Bundled `sqlite3` binary (if present in the script folder)
+2. System `sqlite3` command (if in PATH)
+3. `python3` with sqlite module
+4. `python` (Python 2) with sqlite module
+
+**If your Kobo has none of these** (like yours currently):
+
+### Option A: Keep Using Computer-Based Sync (Easiest)
+```bash
+./sync_from_computer.sh
+```
+Works perfectly, just requires USB connection.
+
+### Option B: Get sqlite3 for Your Kobo
+See [GET_SQLITE3.md](GET_SQLITE3.md) for options:
+- Copy from KOReader/other mods
+- Download pre-built ARM binary
+- Let me build one for your specific model
 
 ## Installation
 

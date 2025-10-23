@@ -9,5 +9,9 @@ menu_item :library :Sync Reading Stats         :cmd_output :500:/mnt/onboard/.ad
 menu_item :main    :Sync Stats (Verbose)       :cmd_output :500:/mnt/onboard/.adds/kobo-stats-sync/sync_stats_verbose.sh
 menu_item :library :Sync Stats (Verbose)       :cmd_output :500:/mnt/onboard/.adds/kobo-stats-sync/sync_stats_verbose.sh
 
+# Diagnostic tool - find available tools
+menu_item :main    :Check Sync Tools           :cmd_output :500:/mnt/onboard/.adds/kobo-stats-sync/find_tools.sh
+menu_item :library :Check Sync Tools           :cmd_output :500:/mnt/onboard/.adds/kobo-stats-sync/find_tools.sh
+
 # Optional: Auto-sync on WiFi connect
 # chain_success :nickel_wifi_connected :cmd_spawn :quiet:/mnt/onboard/.adds/kobo-stats-sync/sync_stats.sh
