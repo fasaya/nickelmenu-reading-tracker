@@ -57,6 +57,7 @@ SELECT
     Language,
     Attribution,
     DateLastRead,
+    FirstTimeReading,
     TimeSpentReading,
     LastTimeStartedReading,
     LastTimeFinishedReading,
@@ -64,7 +65,9 @@ SELECT
     ___PercentRead,
     RestOfBookEstimate,
     CurrentChapterEstimate,
-    CurrentChapterProgress
+    CurrentChapterProgress,
+    Description,
+    Publisher
 FROM content
 WHERE ContentType = 6
 ORDER BY DateLastRead DESC;
@@ -94,7 +97,7 @@ PAYLOAD="$PAYLOAD
   \"books\": ["
 
 first=true
-while IFS='|' read -r content_id book_id book_title title language author date_last_read time_spent last_started last_finished read_status percent_read rest_estimate chapter_estimate chapter_progress; do
+while IFS='|' read -r content_id book_id book_title title language author date_last_read time_spent last_started last_finished read_status percent_read rest_estimate chapter_estimate chapter_progress first_time_reading description publisher; do
     if [ "$first" = true ]; then
         first=false
     else
@@ -132,7 +135,13 @@ while IFS='|' read -r content_id book_id book_title title language author date_l
     PAYLOAD="$PAYLOAD
       \"current_chapter_estimate\": $chapter_estimate,"
     PAYLOAD="$PAYLOAD
-      \"current_chapter_progress\": $chapter_progress"
+      \"current_chapter_progress\": $chapter_progress,"
+    PAYLOAD="$PAYLOAD
+      \"first_time_reading\": $first_time_reading,"
+    PAYLOAD="$PAYLOAD
+      \"description\": \"$description\","
+    PAYLOAD="$PAYLOAD
+      \"publisher\": \"$publisher\""
     PAYLOAD="$PAYLOAD
     }"
 done <<< "$STATS"
