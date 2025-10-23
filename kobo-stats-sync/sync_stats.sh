@@ -58,6 +58,7 @@ SELECT
     BookID,
     BookTitle,
     Title,
+    Language,
     Attribution,
     DateLastRead,
     TimeSpentReading,
@@ -69,8 +70,7 @@ SELECT
     CurrentChapterEstimate,
     CurrentChapterProgress
 FROM content
-WHERE ContentType IN (6, 10, 16)
-AND ___PercentRead > 0
+WHERE ContentType = 6
 ORDER BY DateLastRead DESC;
 EOF
     # Fallback to Python if sqlite3 not available
@@ -100,7 +100,7 @@ build_payload() {
     echo "  \"books\": ["
     
     first=true
-    while IFS='|' read -r content_id book_id book_title title author date_last_read time_spent last_started last_finished read_status percent_read rest_estimate chapter_estimate chapter_progress; do
+    while IFS='|' read -r content_id book_id book_title title language author date_last_read time_spent last_started last_finished read_status percent_read rest_estimate chapter_estimate chapter_progress; do
         if [ "$first" = true ]; then
             first=false
         else
@@ -112,6 +112,7 @@ build_payload() {
         echo "      \"book_id\": \"$book_id\","
         echo "      \"book_title\": \"$book_title\","
         echo "      \"title\": \"$title\","
+        echo "      \"language\": \"$language\","
         echo "      \"author\": \"$author\","
         echo "      \"date_last_read\": \"$date_last_read\","
         echo "      \"time_spent_reading\": $time_spent,"
